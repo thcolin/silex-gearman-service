@@ -1,0 +1,15 @@
+#!/usr/local/bin/php
+<?php
+
+  use Symfony\Component\Console\Application;
+  use thcolin\Gearman\Command\RunTaskCommand;
+  use thcolin\Gearman\Command\WatchTaskCommand;
+
+  $app = require __DIR__.'/bootstrap.php';
+
+  $console = $app['console'];
+  $console -> add(new RunTaskCommand);
+  $console -> add(new WatchTaskCommand);
+  $console -> run();
+
+?>
