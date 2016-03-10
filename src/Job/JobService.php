@@ -1,15 +1,19 @@
 <?php
 
-  namespace thcolin\Gearman;
+  namespace thcolin\Gearman\Job;
 
-  use thcolin\Gearman\Command\RunTaskCommand;
   use GearmanClient;
+  use thcolin\Gearman\Command\RunJobCommand;
+  use thcolin\Gearman\ConsoleAsync;
+  use thcolin\Gearman\JSON;
   use Exception;
 
   class JobService{
 
-    const RUN_NORMAL = 1;
-    const RUN_BACKGROUND = 2;
+    const REFRESH = true;
+
+    const RUN_NORMAL = 'normal';
+    const RUN_BACKGROUND = 'background';
 
     public function __construct(ConsoleAsync $console, GearmanClient $client, JSON $json){
       $this -> console = $console;
@@ -17,13 +21,16 @@
       $this -> json = $json;
     }
 
-    public function jobs(){
+    public function jobs($refresh = false){
       $json = $this -> json -> getJSON();
       $array = json_decode($json, true);
       $jobs = [];
 
       foreach($array as $value){
         $job = Job::unserialize($value);
+        if($refresh){
+          $job = $this -> refresh($job);
+        }
         $jobs[$job -> getUUID()] = $job;
       }
 
@@ -86,9 +93,9 @@
       }
 
       if($run == self::RUN_BACKGROUND){
-        // the task run and update (save) the job after his creation in gearman
+        // the command run and save the job after his creation in gearman
         // with the jobhandler to, next, get the status
-        $this -> console -> execute(new RunTaskCommand(), [
+        $process = $this -> console -> execute(new RunJobCommand(), [
           'uuid' => $job -> getUUID()
         ]);
       } else{

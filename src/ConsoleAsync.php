@@ -26,7 +26,7 @@
 			);
 			$process -> run();
 
-			return $process -> getOutput();
+			return $process;
 		}
 
 		private function parseArgs($expected, $values){

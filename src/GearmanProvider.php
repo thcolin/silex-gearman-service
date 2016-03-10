@@ -9,6 +9,10 @@
   use GearmanClient;
   use MHlavac\Gearman\Manager as GearmanManager;
 
+  use thcolin\Gearman\Job\JobService;
+  use thcolin\Gearman\Worker\WorkerService;
+  use thcolin\Gearman\ConsoleAsync;
+
   class GearmanProvider implements ServiceProviderInterface, ControllerProviderInterface{
 
     /**
@@ -27,7 +31,12 @@
           ], $app['gearman.options']);
       });
 
-      $app['gearman.client'] = $app -> share(function() use($app){
+      $app['gearman.console'] = $app -> share(function() use ($app){
+        $console = new ConsoleAsync($app['gearman.options']['console']);
+        return $console;
+      });
+
+      $app['gearman.client'] = $app -> share(function() use ($app){
         $app['gearman.options.init']();
         $client = new GearmanClient();
         $client -> addServers(implode(',', [$app['gearman.options']['server']]));
@@ -36,15 +45,14 @@
 
       $app['gearman.jobs'] = $app -> share(function() use ($app){
         $app['gearman.options.init']();
-        $console = new ConsoleAsync($app['gearman.options']['console']);
         $json = new JSON($app['gearman.options']['json']);
-        return new JobService($console, $app['gearman.client'], $json);
+        return new JobService($app['gearman.console'], $app['gearman.client'], $json);
       });
 
       $app['gearman.workers'] = $app -> share(function() use ($app){
         $app['gearman.options.init']();
         $manager = new GearmanManager($app['gearman.options']['server']);
-        return new WorkerService($manager);
+        return new WorkerService($app['gearman.console'], $manager);
       });
     }
 

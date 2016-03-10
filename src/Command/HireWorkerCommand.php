@@ -2,43 +2,67 @@
 
   namespace thcolin\Gearman\Command;
 
-  use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+  use Knp\Command\Command;
   use Symfony\Component\Console\Input\InputArgument;
   use Symfony\Component\Console\Input\InputOption;
   use Symfony\Component\Console\Input\InputInterface;
   use Symfony\Component\Console\Output\OutputInterface;
+  use Symfony\Component\Console\Question\ChoiceQuestion;
+  use thcolin\Gearman\Worker\WorkerService;
+  use GearmanWorker;
   use Exception;
 
-  class HireWorkerCommand extends ContainerAwareCommand{
+  class HireWorkerCommand extends Command{
 
     protected function configure(){
       $this
         -> setName('hire-worker')
         -> setDescription('Hire a worker and assign it to a Gearman server')
-        -> addOption('server', null, InputOption::VALUE_REQUIRED, 'Gearman server to use (default: localhost)')
-        -> addOption('worker', null, InputOption::VALUE_REQUIRED, 'Local/Scaleway (default: local)')
-        -> addArgument('commands', (InputArgument::IS_ARRAY | InputArgument::REQUIRED), 'Command classes the worker will be able to execute (separated by space)');
+        -> addOption('type', null, InputOption::VALUE_REQUIRED, 'Type of worker : local or scaleway')
+        -> addArgument('classes', (InputArgument::IS_ARRAY | InputArgument::REQUIRED), 'Tasks classes the worker will be able to execute (separated by space)');
     }
 
     public function execute(InputInterface $input, OutputInterface $output){
-      $server = $input -> getOption('server');
-      $commands = $input -> getArgument('commands');
+      $helper = $this -> getHelper('question');
+      $type = $input -> getOption('type');
+      $classes = $input -> getArgument('classes');
+      $app = $this -> getSilexApplication();
 
-      $worker = new \MHlavac\Gearman\Worker();
+      if(!in_array($type, [WorkerService::WORKER_LOCAL, WorkerService::WORKER_SCALEWAY])){
+        $whichType = new ChoiceQuestion('Which worker do you want to hire ?', [WorkerService::WORKER_LOCAL, WorkerService::WORKER_SCALEWAY], 0);
+        $type = $helper -> ask($input, $output, $whichType);
+      }
 
-      if($server){
-        $worker -> addServer($server);
+      foreach($classes as $class){
+        if(!class_exists($class)){
+          throw new Exception('Class "'.$class.'" not found !');
+        }
+        $tasks[] = $class::WORK;
+      }
+
+      if($type == WorkerService::WORKER_SCALEWAY){
+        $app['gearman.workers'] -> hire($classes, WorkerService::WORKER_SCALEWAY);
+        $output -> writeln('Launching new Scaleway server...');
+        $output -> writeln('Started scaleway worker : <info>'.implode('</info>, <info>', $tasks).'</info>');
       } else{
-        $worker -> addServer();
-      }
+        $worker = new GearmanWorker();
+        $worker -> setId(uniqid().'-'.getmypid());
+        $worker -> addServers($app['gearman.options']['server']);
 
-      foreach($commands as $command){
-        $object = new $command();
-        $worker -> addFunction($object -> getName(), [$object, 'work']);
-        $worker -> attachCallback([$object, 'callback']);
-      }
+        foreach($classes as $class){
+          $object = new $class();
+          $worker -> addFunction($object::WORK, [$object, 'work']);
+        }
 
-      $worker -> work();
+        $output -> writeln('Starting local worker : <info>'.implode('</info>, <info>', $tasks).'</info>');
+        $output -> writeln("Waiting job...");
+
+        do{
+          if($worker -> returnCode() != GEARMAN_SUCCESS){
+            break;
+          }
+        } while($worker -> work());
+      }
     }
 
   }

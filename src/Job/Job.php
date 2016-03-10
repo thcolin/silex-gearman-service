@@ -1,6 +1,6 @@
 <?php
 
-  namespace thcolin\Gearman;
+  namespace thcolin\Gearman\Job;
 
   use JsonSerializable;
   use Exception;
