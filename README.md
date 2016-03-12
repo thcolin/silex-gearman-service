@@ -7,7 +7,7 @@ The library use two majors service **gearman.jobs** to manage jobs, and **gearma
 ## Installation
 Install with composer :
 ```
-composer require thcolin/silex-gearman-service
+composer require thcolin/silex-gearman-service dev-master
 ```
 
 ## Example :
