@@ -5,6 +5,7 @@
   use thcolin\Gearman\GearmanProvider;
 
   require __DIR__.'/../vendor/autoload.php';
+  require __DIR__.'/vars.php';
 
   $app = new Application();
 
@@ -15,7 +16,11 @@
   ]);
 
   $app -> register(new GearmanProvider(), [
-    'gearman.options' => []
+    'gearman.options' => [
+    		"scaleway_key"			=>SCALEWAY_KEY,
+    		"scaleway_organization"	=>SCALEWAY_ORGANIZATION,
+    		"scaleway_image"		=>SCALEWAY_IMAGE
+    ]
   ]);
 
   return $app;

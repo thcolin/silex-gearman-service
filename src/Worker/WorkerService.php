@@ -40,7 +40,24 @@
           'type' => self::WORKER_LOCAL
         ]);
       } else{
-
+      	$client = new GuzzleHttp\Client(['headers' => ['X-Auth-Token' => $app['gearman.options']['scaleway_key']]]);
+      	$res = $client->request('POST', 'https://api.scaleway.com/servers', ['http_errors' => false,
+      			'json' => [
+      					'organization' => $app['gearman.options']['scaleway_organization'],
+      					'name' => 'test_name',
+      					'image' => $app['gearman.options']['image']
+      			]
+      				
+      	]);
+      	$output = json_decode($res->getBody());
+		$server_id = $output["server"]["id"];
+		$res = $client->request('POST', 'https://api.scaleway.com/servers/'.$server_id.'/action', ['http_errors' => false,
+				'json' => [
+						//'action' => "poweron"
+						'action' => "poweroff"
+				]
+		
+		]);
       }
     }
 

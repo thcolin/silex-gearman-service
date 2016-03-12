@@ -11,3 +11,4 @@ composer.lock
 
 /vendor/
 ./jobs.json
+/tests/vars.php
