@@ -4,65 +4,58 @@
 
   use MHlavac\Gearman\Manager as GearmanManager;
   use thcolin\Gearman\Command\HireWorkerCommand;
+  use thcolin\Gearman\Scaleway\ScalewayService;
   use thcolin\Gearman\ConsoleAsync;
   use thcolin\Gearman\JSON;
   use Exception;
 
   class WorkerService{
 
-    const WORKER_LOCAL = 'local';
-    const WORKER_SCALEWAY = 'scaleway';
+    protected $console;
+    protected $manager;
+    protected $scaleway;
 
-    public function __construct(ConsoleAsync $console, GearmanManager $manager){
+    public function __construct(ConsoleAsync $console, ScalewayService $scaleway, GearmanManager $manager){
       $this -> console = $console;
+      $this -> scaleway = $scaleway;
       $this -> manager = $manager;
     }
 
     public function workers(){
       $workers = [];
       foreach($this -> manager -> workers() as $worker){
-        if($worker['id'] != '-'){
+        if(count($worker['abilities'])){
           $workers[] = new Worker($worker);
         }
       }
       return $workers;
     }
 
-    public function hire($classes, $worker = self::WORKER_LOCAL){
+    public function hire($classes, $worker = Worker::LOCAL){
       if(is_string($classes)){
         $classes = [$classes];
       }
 
-      if($worker == self::WORKER_LOCAL){
+      if($worker == Worker::LOCAL){
         $process = $this -> console -> execute(new HireWorkerCommand(), [
           'classes' => $classes
         ], [
-          'type' => self::WORKER_LOCAL
+          'type' => Worker::LOCAL
         ]);
       } else{
-      	$client = new GuzzleHttp\Client(['headers' => ['X-Auth-Token' => $app['gearman.options']['scaleway_key']]]);
-      	$res = $client->request('POST', 'https://api.scaleway.com/servers', ['http_errors' => false,
-      			'json' => [
-      					'organization' => $app['gearman.options']['scaleway_organization'],
-      					'name' => 'test_name',
-      					'image' => $app['gearman.options']['image']
-      			]
-      				
-      	]);
-      	$output = json_decode($res->getBody());
-		$server_id = $output["server"]["id"];
-		$res = $client->request('POST', 'https://api.scaleway.com/servers/'.$server_id.'/action', ['http_errors' => false,
-				'json' => [
-						//'action' => "poweron"
-						'action' => "poweroff"
-				]
-		
-		]);
+        $this -> scaleway -> boot($classes);
       }
     }
 
     public function fire(Worker $worker){
-      posix_kill($worker -> getPid(), SIGKILL);
+      switch($worker -> getType()){
+        case Worker::LOCAL:
+          posix_kill($worker -> getPid(), SIGKILL);
+        break;
+        case Worker::SCALEWAY:
+          $this -> scaleway -> shutdown($worker -> getAddress());
+        break;
+      }
     }
   }
 

@@ -18,15 +18,19 @@
 		}
 
 		public function execute(Command $command, $args = [], $options = []){
-			$process = new Process(
+			$process = new Process($this -> getCommandString($command, $args, $options));
+			$process -> run();
+
+			return $process;
+		}
+
+		public function getCommandString(Command $command, $args = [], $options = []){
+			return(
 				$this -> getConsole().' '.
 				$command -> getName().' '.
 				$this -> parseArgs($command -> getDefinition() -> getArguments(), $args).' '.
 				$this -> parseOptions($command -> getDefinition() -> getOptions(), $options).' &> /dev/null &'
 			);
-			$process -> run();
-
-			return $process;
 		}
 
 		private function parseArgs($expected, $values){

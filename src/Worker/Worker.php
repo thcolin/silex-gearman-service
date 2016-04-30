@@ -4,19 +4,22 @@
 
   class Worker{
 
+    const LOCAL = 'local';
+    const SCALEWAY = 'scaleway';
+
     protected $id;
     protected $fd;
-    protected $server;
+    protected $address;
     protected $abilities;
 
     public function __construct($data){
       if($data['id'] == '-'){
-        throw new Exception('Non valid worker submited');
+        $data['id'] = self::SCALEWAY;
       }
 
       $this -> setId($data['id']);
       $this -> setFd($data['fd']);
-      $this -> setServer($data['ip']);
+      $this -> setAddress($data['ip']);
       $this -> setAbilities($data['abilities']);
     }
 
@@ -28,8 +31,12 @@
       $this -> id = $id;
     }
 
+    public function getType(){
+      return ($this -> getAddress() == '127.0.0.1' ? self::LOCAL:self::SCALEWAY);
+    }
+
     public function getPid(){
-      return explode('-', $this -> getId())[1];
+      return $this -> getId();
     }
 
     public function getFd(){
@@ -40,12 +47,12 @@
       $this -> fd = $fd;
     }
 
-    public function getServer(){
-      return $this -> server;
+    public function getAddress(){
+      return $this -> address;
     }
 
-    public function setServer($server){
-      $this -> server = $server;
+    public function setAddress($address){
+      $this -> address = $address;
     }
 
     public function getAbilities(){

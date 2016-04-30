@@ -9,6 +9,7 @@
   use GearmanClient;
   use MHlavac\Gearman\Manager as GearmanManager;
 
+  use thcolin\Gearman\Scaleway\ScalewayService;
   use thcolin\Gearman\Job\JobService;
   use thcolin\Gearman\Worker\WorkerService;
   use thcolin\Gearman\ConsoleAsync;
@@ -27,13 +28,42 @@
           $app['gearman.options'] = array_replace_recursive([
             'server' => '127.0.0.1:4730',
             'json' => __DIR__.'/../jobs.json',
-            'console' => __DIR__.'/../tests/console'
+            'scaleway' => [
+              'key' => 'YOUR_API_KEY',
+              'organization' => 'YOUR_ORGANIZATION_KEY',
+              'image' => 'YOUR_IMAGE_KEY'
+            ],
+            'workers' => [
+              'local' => [
+                'console' => __DIR__.'/../tests/console'
+              ],
+              'scaleway' => [
+                'keys' => [
+                  'public' => __DIR__.'/../tests/id_rsa.pub',
+                  'private' => __DIR__.'/../tests/ida_rsa'
+                ],
+                'bootstrap' => '/var/www/silex-gearman-service/tests/bootstrap.json',
+                'console' => '/var/www/silex-gearman-service/tests/console'
+              ]
+            ]
           ], $app['gearman.options']);
       });
 
       $app['gearman.console'] = $app -> share(function() use ($app){
-        $console = new ConsoleAsync($app['gearman.options']['console']);
+        $console = new ConsoleAsync($app['gearman.options']['workers']['local']['console']);
         return $console;
+      });
+
+      $app['gearman.scaleway'] = $app -> share(function() use ($app){
+        $scaleway = new ScalewayService(
+          $app['gearman.options']['scaleway']['key'],
+          $app['gearman.options']['scaleway']['organization'],
+          $app['gearman.options']['scaleway']['image'],
+          $app['gearman.options']['workers']['scaleway']['keys'],
+          $app['gearman.options']['workers']['scaleway']['bootstrap'],
+          $app['gearman.options']['workers']['scaleway']['console']
+        );
+        return $scaleway;
       });
 
       $app['gearman.client'] = $app -> share(function() use ($app){
@@ -52,7 +82,7 @@
       $app['gearman.workers'] = $app -> share(function() use ($app){
         $app['gearman.options.init']();
         $manager = new GearmanManager($app['gearman.options']['server']);
-        return new WorkerService($app['gearman.console'], $manager);
+        return new WorkerService($app['gearman.console'], $app['gearman.scaleway'], $manager);
       });
     }
 

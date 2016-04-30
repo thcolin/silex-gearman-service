@@ -8,7 +8,7 @@
   use Symfony\Component\Console\Input\InputInterface;
   use Symfony\Component\Console\Output\OutputInterface;
   use Symfony\Component\Console\Question\ChoiceQuestion;
-  use thcolin\Gearman\Worker\WorkerService;
+  use thcolin\Gearman\Worker\Worker;
   use GearmanWorker;
   use Exception;
 
@@ -28,8 +28,8 @@
       $classes = $input -> getArgument('classes');
       $app = $this -> getSilexApplication();
 
-      if(!in_array($type, [WorkerService::WORKER_LOCAL, WorkerService::WORKER_SCALEWAY])){
-        $whichType = new ChoiceQuestion('Which worker do you want to hire ?', [WorkerService::WORKER_LOCAL, WorkerService::WORKER_SCALEWAY], 0);
+      if(!in_array($type, [Worker::LOCAL, Worker::SCALEWAY])){
+        $whichType = new ChoiceQuestion('Which worker do you want to hire ?', [Worker::LOCAL, Worker::SCALEWAY], 0);
         $type = $helper -> ask($input, $output, $whichType);
       }
 
@@ -40,13 +40,13 @@
         $tasks[] = $class::WORK;
       }
 
-      if($type == WorkerService::WORKER_SCALEWAY){
-        $app['gearman.workers'] -> hire($classes, WorkerService::WORKER_SCALEWAY);
+      if($type == Worker::SCALEWAY){
+        $app['gearman.workers'] -> hire($classes, Worker::SCALEWAY);
         $output -> writeln('Launching new Scaleway server...');
         $output -> writeln('Started scaleway worker : <info>'.implode('</info>, <info>', $tasks).'</info>');
       } else{
         $worker = new GearmanWorker();
-        $worker -> setId(uniqid().'-'.getmypid());
+        $worker -> setId(getmypid());
         $worker -> addServers($app['gearman.options']['server']);
 
         foreach($classes as $class){
