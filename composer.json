@@ -7,7 +7,7 @@
         }
     ],
     "require": {
-        "symfony/console": "~2.0",
+        "symfony/console": "*",
         "symfony/framework-bundle": "~3.0",
         "mhlavac/gearman": "0.1.*",
         "symfony/process": "~3.0",
