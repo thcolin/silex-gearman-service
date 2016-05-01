@@ -85,7 +85,7 @@
       $this -> json -> writeJSON($jobs);
     }
 
-    public function run(Job $job, $run = self::RUN_NORMAL, $args = [], $options = []){
+    public function run(Job $job, $run = self::RUN_NORMAL){
       try{
         $this -> job($job -> getUUID());
       } catch(Exception $e){
@@ -95,8 +95,9 @@
       if($run == self::RUN_BACKGROUND){
         // the command run and save the job after his creation in gearman
         // with the jobhandler to, next, get the status
-        $args['uuid'] = $job -> getUUID();
-        $process = $this -> console -> execute(new RunJobCommand(), $args, $options);
+        $process = $this -> console -> execute(new RunJobCommand(), [
+          'uuid' => $job -> getUUID()
+        ]);
       } else{
         $result = $this -> client -> doNormal($job -> getTask(), $job -> getWorkload(Job::WORKLOAD_JSON));
         $job -> setResult($result);
